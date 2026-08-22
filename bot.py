@@ -10,9 +10,11 @@ from groq import Groq
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GROQ_KEY = os.getenv("GROQ_KEY")
 
+# Nur dieser Channel darf mit Abu Olaf chatten
 ALLOWED_CHANNEL_ID = 1507649049602424976
 
-GROQ_MODEL = "llama-3.1-8b-instant"
+# AKTUELLES GROQ MODELL
+GROQ_MODEL = "llama-3.3-70b-versatile"
 
 
 # =========================================================
@@ -46,8 +48,8 @@ except Exception as e:
 
     print("========================================")
     print("FEHLER BEIM ERSTELLEN DES GROQ CLIENTS")
-    print("Fehlertyp:", type(e).__name__)
-    print("Fehler:", str(e))
+    print("FEHLERTYP:", type(e).__name__)
+    print("FEHLER:", str(e))
     print("========================================")
 
     raise
@@ -258,9 +260,9 @@ bleibe aber locker und übertreibe nicht.
         print("")
         print("========================================")
         print("GROQ ANFRAGE")
-        print("User:", user)
-        print("Nachricht:", prompt)
-        print("Modell:", GROQ_MODEL)
+        print("USER:", user)
+        print("NACHRICHT:", prompt)
+        print("MODELL:", GROQ_MODEL)
         print("========================================")
 
 
@@ -281,7 +283,9 @@ bleibe aber locker und übertreibe nicht.
 
         if not completion.choices:
 
-            print("GROQ FEHLER: Keine choices erhalten.")
+            print(
+                "GROQ FEHLER: Keine choices erhalten."
+            )
 
             return "bruder ich hab gerade keine antwort 😭"
 
@@ -291,10 +295,16 @@ bleibe aber locker und übertreibe nicht.
 
         if not reply:
 
-            print("GROQ FEHLER: Leere Antwort erhalten.")
+            print(
+                "GROQ FEHLER: Leere Antwort erhalten."
+            )
 
             return "bruder ich hab gerade nichts zu sagen 😭"
 
+
+        # -------------------------------------------------
+        # KLEINSCHREIBUNG
+        # -------------------------------------------------
 
         reply = reply.lower().strip()
 
@@ -314,7 +324,6 @@ bleibe aber locker und übertreibe nicht.
 
     except Exception as e:
 
-        print("")
         print("")
         print("########################################")
         print("########### GROQ FEHLER ################")
@@ -356,7 +365,6 @@ bleibe aber locker und übertreibe nicht.
         print("")
         print("")
 
-
         return (
             "bruder meine ki hat gerade kurz schluckauf 😭"
         )
@@ -375,22 +383,22 @@ async def on_ready():
     print("========================================")
 
     print(
-        "Bot:",
+        "BOT:",
         client.user
     )
 
     print(
-        "Bot ID:",
+        "BOT ID:",
         client.user.id
     )
 
     print(
-        "Groq Modell:",
+        "GROQ MODELL:",
         GROQ_MODEL
     )
 
     print(
-        "Erlaubter Channel:",
+        "ERLAUBTER CHANNEL:",
         ALLOWED_CHANNEL_ID
     )
 
@@ -410,12 +418,12 @@ async def on_message(message):
         return
 
 
-    # andere Bots
+    # andere Bots ignorieren
     if message.author.bot:
         return
 
 
-    # falscher Channel
+    # nur erlaubter Channel
     if message.channel.id != ALLOWED_CHANNEL_ID:
         return
 
@@ -531,14 +539,13 @@ async def on_message(message):
             reply[:1900]
         )
 
-
     except discord.HTTPException as e:
 
         print("")
         print("========================================")
         print("DISCORD SEND FEHLER")
-        print("Fehlertyp:", type(e).__name__)
-        print("Fehler:", str(e))
+        print("FEHLERTYP:", type(e).__name__)
+        print("FEHLER:", str(e))
         print("========================================")
         print("")
 
