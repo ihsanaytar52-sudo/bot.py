@@ -116,29 +116,29 @@ def get_insult_reply():
 
     replies = [
 
-        "halt mal die fresse bruder 😭",
+        "halt mal die fresse bruder ",
 
-        "pass mal auf wie du mit abu olaf redest 😭",
+        "pass mal auf wie du mit abu olaf redest ",
 
-        "du bist heute aber mutig unterwegs bruder 😂",
+        "du bist heute aber mutig unterwegs bruder ",
 
-        "was ist denn mit dir los digga 😭",
+        "deine Mutter ",
 
-        "respekt ist wohl heute im urlaub 😂",
+        "du kleiner hurensohn ",
 
-        "redest du gerade ernsthaft so mit mir lan 😭",
+        "du schwanzlutscher ",
 
-        "mach mal langsam bruder 😂",
+        "du pic ",
 
-        "du hast abu olaf provoziert, selber schuld 😭",
+        "ich ficke deine mutter ",
 
-        "komm beruhig dich erstmal wieder bruder",
+        "deine Vater ",
 
-        "was laberst du da eigentlich 😂",
+        "du schlampe ",
 
-        "du bist ja richtig frech heute 😭",
+        "du hundeoshn",
 
-        "abu olaf vergisst sowas nicht bruder 😂"
+        "du kahba "
     ]
 
     return random.choice(
