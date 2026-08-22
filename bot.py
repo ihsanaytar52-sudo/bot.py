@@ -140,9 +140,9 @@ Stimmung:
             return "❌ KI Fehler"
 
     except Exception as e:
-        print("ERROR:", e)
-        return "❌ Verbindung Fehler"
-
+        import traceback
+        traceback.print_exc()
+        return f"❌ Fehler: {e}"
 # =========================
 # EVENTS
 # =========================
@@ -179,23 +179,28 @@ async def on_message(message):
 
     provoke = is_provocation(content)
 
-    async with message.channel.typing():
-
+    try:
         reply = ask_ai(content, user, provoke)
+    except Exception as e:
+        print(f"KI-Fehler: {e}")
+        reply = "❌ Fehler bei der KI."
 
-        memory.append({
-            "role": "user",
-            "content": f"{user}: {content}"
-        })
+    memory.append({
+        "role": "user",
+        "content": f"{user}: {content}"
+    })
 
-        memory.append({
-            "role": "assistant",
-            "content": reply
-        })
+    memory.append({
+        "role": "assistant",
+        "content": reply
+    })
 
-        if len(memory) > 20:
-            memory[:] = memory[-20:]
+    if len(memory) > 20:
+        memory[:] = memory[-20:]
 
+    try:
         await message.channel.send(reply[:1900])
+    except discord.HTTPException as e:
+        print(f"Sende-Fehler: {e}")
 
 client.run(DISCORD_TOKEN)
