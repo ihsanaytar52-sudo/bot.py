@@ -1,63 +1,133 @@
-import discord
 import os
-import requests
+import discord
+from groq import Groq
+
+
+# =========================================================
+# KONFIGURATION
+# =========================================================
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GROQ_KEY = os.getenv("GROQ_KEY")
 
-# =========================
-# NUR EIN CHANNEL
-# =========================
+# Nur dieser Channel darf mit Abu Olaf chatten
 ALLOWED_CHANNEL_ID = 1507649049602424976
+
+# Groq Modell
+GROQ_MODEL = "llama-3.1-8b-instant"
+
+
+# =========================================================
+# PRÜFEN, OB KEYS VORHANDEN SIND
+# =========================================================
+
+if not DISCORD_TOKEN:
+    raise SystemExit(
+        "FEHLER: DISCORD_TOKEN fehlt in Railway Variables."
+    )
+
+if not GROQ_KEY:
+    raise SystemExit(
+        "FEHLER: GROQ_KEY fehlt in Railway Variables."
+    )
+
+
+# =========================================================
+# GROQ
+# =========================================================
+
+groq_client = Groq(
+    api_key=GROQ_KEY
+)
+
+
+# =========================================================
+# DISCORD
+# =========================================================
 
 intents = discord.Intents.default()
 intents.message_content = True
 
-client = discord.Client(intents=intents)
+client = discord.Client(
+    intents=intents
+)
 
-# =========================
-# MEMORY / FRIENDS / MOOD
-# =========================
+
+# =========================================================
+# MEMORY
+# =========================================================
+
 memory = []
+
+# Freundschaft pro User
 friendship = {}
+
+# Stimmung
 mood = 0
 
-# =========================
-# PROVOCATION CHECK
-# =========================
+
+# =========================================================
+# PROVOKATION
+# =========================================================
+
 def is_provocation(text):
+
     bad_words = [
         "hund",
         "bastard",
         "hurensohn",
         "kahba",
         "hure",
-        "schlampe"
+        "schlampe",
+        "schwanz",
+        "schwanzlutscher",
+        "hundesohn"
     ]
-    return any(word in text.lower() for word in bad_words)
 
-# =========================
-# MOOD TEXT
-# =========================
+    text = text.lower()
+
+    return any(
+        word in text
+        for word in bad_words
+    )
+
+
+# =========================================================
+# MOOD
+# =========================================================
+
 def get_mood():
+
     if mood <= -2:
         return "genervt und leicht sarkastisch"
+
     elif mood >= 2:
         return "locker und freundlich"
-    else:
-        return "normal und entspannt"
 
-# =========================
-# AI FUNCTION
-# =========================
+    return "normal und entspannt"
+
+
+# =========================================================
+# KI ANFRAGE
+# =========================================================
+
 def ask_ai(prompt, user, provoke):
 
     global mood
+
+    # -----------------------------------------------------
+    # USER ANLEGEN
+    # -----------------------------------------------------
 
     if user not in friendship:
         friendship[user] = 0
 
     friendship[user] += 1
+
+
+    # -----------------------------------------------------
+    # STIMMUNG
+    # -----------------------------------------------------
 
     if "lol" in prompt.lower():
         mood += 1
@@ -65,142 +135,361 @@ def ask_ai(prompt, user, provoke):
     if provoke:
         mood -= 1
 
-    mood = max(-5, min(5, mood))
+    mood = max(
+        -5,
+        min(5, mood)
+    )
+
+
+    # -----------------------------------------------------
+    # FREUNDSCHAFT
+    # -----------------------------------------------------
 
     if friendship[user] > 15:
-        friend_text = f"{user} ist ein Stammuser 😏"
+
+        friend_text = (
+            f"{user} ist ein Stammuser 😏"
+        )
+
     elif friendship[user] > 5:
-        friend_text = f"Du kennst {user} gut"
+
+        friend_text = (
+            f"Du kennst {user} schon etwas"
+        )
+
     else:
-        friend_text = f"Neuer User: {user}"
 
-    url = "https://api.groq.com/openai/v1/chat/completions"
+        friend_text = (
+            f"{user} ist noch relativ neu"
+        )
 
-    headers = {
-        "Authorization": f"Bearer {GROQ_KEY}",
-        "Content-Type": "application/json"
-    }
+
+    # -----------------------------------------------------
+    # SYSTEM PROMPT
+    # -----------------------------------------------------
 
     system_text = f"""
-Du bist Abu Olaf.
+du bist abu olaf.
 
-REGELN:
-- Wenn jemand fragt wer du bist, sag: "Ich bin Abu Olaf lan 😏"
-- Antworte kurz (1–2 Sätze)
-- Nutze manchmal (bruder, digga)
-- Sei locker, lustig und freundlich
-- wenn jeamnd mit dir freunde sein will dann lässt du es zu
-- Merke dir User aus dem Chat
-. immer den user sein name in der nacht erwähnen
-- Bleibe in deiner Rolle als Abu Olaf
-- wenn jeamnd dich beleidigt nutze beleidigungen aber nur bei harten beleidigungen sonst antwortest du normal ( ayri, bastard, schwanz, schwanzlutscher, hundesohn, schlampe, kahba, deine mutter, blass mir eine, lutsch mein fetten schwanz )
-- schreib nur in klein keine grossschreibung
+deine regeln:
 
-User Status:
+- du heißt abu olaf
+- wenn jemand fragt wer du bist, sag dass du abu olaf bist
+- antworte normalerweise kurz mit 1 bis 3 sätzen
+- schreibe ausschließlich kleinbuchstaben
+- sei locker, lustig und direkt
+- benutze manchmal "bruder", "digga" oder "lan"
+- du darfst emojis benutzen
+- wenn jemand freundlich ist, sei freundlich
+- wenn jemand mit dir freunde sein will, kannst du ihn als freund akzeptieren
+- merke dir den verlauf des chats
+- bleibe immer in deiner rolle als abu olaf
+- bei normalen beleidigungen darfst du frech zurückantworten
+- übertreibe aber nicht
+- keine langen texte
+- keine großschreibung
+
+aktueller user:
+{user}
+
+user-status:
 {friend_text}
 
-Stimmung:
+deine aktuelle stimmung:
 {get_mood()}
 """
 
+
+    # -----------------------------------------------------
+    # PROVOKATION
+    # -----------------------------------------------------
+
     if provoke:
-        system_text += "\nDer User hat dich provoziert, du darfst etwas frecher reagieren."
 
-    messages = [{"role": "system", "content": system_text}]
+        system_text += """
+der user hat dich provoziert.
 
+du darfst etwas frecher und sarkastischer antworten.
+bleibe aber locker und übertreibe nicht.
+"""
+
+
+    # -----------------------------------------------------
+    # NACHRICHTEN
+    # -----------------------------------------------------
+
+    messages = [
+        {
+            "role": "system",
+            "content": system_text
+        }
+    ]
+
+
+    # Letzte Nachrichten aus Memory
     for m in memory[-10:]:
+
         messages.append(m)
 
-    messages.append({
-        "role": "user",
-        "content": f"{user}: {prompt}"
-    })
 
-    data = {
-        "model": "llama-3.1-8b-instant",
-        "messages": messages,
-        "max_tokens": 120,
-        "temperature": 0.9
-    }
+    # Aktuelle Nachricht
+    messages.append(
+        {
+            "role": "user",
+            "content": f"{user}: {prompt}"
+        }
+    )
+
+
+    # -----------------------------------------------------
+    # GROQ
+    # -----------------------------------------------------
 
     try:
-        r = requests.post(
-            url,
-            headers=headers,
-            json=data,
-            timeout=20
+
+        print(
+            f"KI Anfrage von {user}: {prompt}"
         )
 
-        print("STATUS:", r.status_code)
+        completion = groq_client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=messages,
+            max_tokens=120,
+            temperature=0.9
+        )
 
-        if r.status_code == 200:
-            return r.json()["choices"][0]["message"]["content"]
-        else:
-            print(r.text)
-            return "❌ KI Fehler"
+
+        # Antwort holen
+        reply = completion.choices[0].message.content
+
+
+        if not reply:
+
+            print(
+                "GROQ FEHLER: leere Antwort"
+            )
+
+            return "bruder ich hab gerade nichts zu sagen 😭"
+
+
+        # -------------------------------------------------
+        # KLEINSCHREIBUNG
+        # -------------------------------------------------
+
+        reply = reply.lower().strip()
+
+
+        print(
+            f"KI Antwort: {reply}"
+        )
+
+
+        return reply
+
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return f"❌ Fehler: {e}"
-# =========================
-# EVENTS
-# =========================
+
+        print(
+            "========================================"
+        )
+
+        print(
+            "GROQ FEHLER:"
+        )
+
+        print(
+            repr(e)
+        )
+
+        print(
+            "========================================"
+        )
+
+
+        return (
+            "bruder meine ki hat gerade kurz schluckauf 😭"
+        )
+
+
+# =========================================================
+# BOT READY
+# =========================================================
+
 @client.event
 async def on_ready():
-    print(f"Abu Olaf ist online als {client.user}")
+
+    print(
+        "========================================"
+    )
+
+    print(
+        f"abu olaf ist online als {client.user}"
+    )
+
+    print(
+        f"groq modell: {GROQ_MODEL}"
+    )
+
+    print(
+        f"chat channel: {ALLOWED_CHANNEL_ID}"
+    )
+
+    print(
+        "========================================"
+    )
+
+
+# =========================================================
+# NACHRICHTEN
+# =========================================================
 
 @client.event
 async def on_message(message):
 
+    # eigene Nachrichten ignorieren
     if message.author == client.user:
         return
 
+
+    # andere bots ignorieren
+    if message.author.bot:
+        return
+
+
+    # nur erlaubter channel
     if message.channel.id != ALLOWED_CHANNEL_ID:
         return
 
+
+    # Nachricht
     content = message.content.strip()
+
+
+    # leere Nachricht
+    if not content:
+        return
+
+
+    # User Name
     user = message.author.display_name
 
-    # Namensfragen
+
+    print(
+        f"Discord Nachricht von {user}: {content}"
+    )
+
+
+    # =====================================================
+    # NAMENSFRAGEN
+    # =====================================================
+
     if content.lower() in [
         "wer bist du",
         "wie heißt du",
+        "wie heisst du",
         "dein name",
         "wer bistn du"
     ]:
-        await message.channel.send("Ich bin Abu Olaf lan 😏")
+
+        await message.channel.send(
+            "ich bin abu olaf lan 😏"
+        )
+
         return
 
-    # Begrüßung
-    if content.lower() in ["hi", "hallo", "hey", "selam"]:
-        await message.channel.send(f"👋 Selam {user}, ich bin Abu Olaf lan 😏")
+
+    # =====================================================
+    # BEGRÜSSUNGEN
+    # =====================================================
+
+    if content.lower() in [
+        "hi",
+        "hallo",
+        "hey",
+        "selam",
+        "moin",
+        "servus"
+    ]:
+
+        await message.channel.send(
+            f"selam {user.lower()}, ich bin abu olaf lan 😏"
+        )
+
         return
 
-    provoke = is_provocation(content)
 
-    try:
-        reply = ask_ai(content, user, provoke)
-    except Exception as e:
-        print(f"KI-Fehler: {e}")
-        reply = "❌ Fehler bei der KI."
+    # =====================================================
+    # PROVOKATION
+    # =====================================================
 
-    memory.append({
-        "role": "user",
-        "content": f"{user}: {content}"
-    })
+    provoke = is_provocation(
+        content
+    )
 
-    memory.append({
-        "role": "assistant",
-        "content": reply
-    })
 
+    # =====================================================
+    # KI
+    # =====================================================
+
+    reply = ask_ai(
+        content,
+        user,
+        provoke
+    )
+
+
+    # =====================================================
+    # MEMORY
+    # =====================================================
+
+    memory.append(
+        {
+            "role": "user",
+            "content": f"{user}: {content}"
+        }
+    )
+
+
+    memory.append(
+        {
+            "role": "assistant",
+            "content": reply
+        }
+    )
+
+
+    # Memory begrenzen
     if len(memory) > 20:
+
         memory[:] = memory[-20:]
 
-    try:
-        await message.channel.send(reply[:1900])
-    except discord.HTTPException as e:
-        print(f"Sende-Fehler: {e}")
 
-client.run(DISCORD_TOKEN)
+    # =====================================================
+    # DISCORD ANTWORT
+    # =====================================================
+
+    try:
+
+        await message.channel.send(
+            reply[:1900]
+        )
+
+    except discord.HTTPException as e:
+
+        print(
+            f"Discord Sende-Fehler: {e}"
+        )
+
+
+# =========================================================
+# START
+# =========================================================
+
+print(
+    "abu olaf wird gestartet..."
+)
+
+
+client.run(
+    DISCORD_TOKEN
+)
