@@ -14,7 +14,7 @@ GROQ_KEY = os.getenv("GROQ_KEY")
 ALLOWED_CHANNEL_ID = 1507649049602424976
 
 # AKTUELLES GROQ MODELL
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = "openai/gpt-oss-20b"
 
 
 # =========================================================
@@ -33,7 +33,7 @@ if not GROQ_KEY:
 
 
 # =========================================================
-# GROQ
+# GROQ CLIENT
 # =========================================================
 
 try:
@@ -160,13 +160,13 @@ def ask_ai(prompt, user, provoke):
     if friendship[user] > 15:
 
         friend_text = (
-            f"{user} ist ein Stammuser 😏"
+            f"{user} ist ein stammuser 😏"
         )
 
     elif friendship[user] > 5:
 
         friend_text = (
-            f"Du kennst {user} schon etwas"
+            f"du kennst {user} schon etwas"
         )
 
     else:
@@ -238,11 +238,13 @@ bleibe aber locker und übertreibe nicht.
     ]
 
 
+    # Letzte Nachrichten
     for m in memory[-10:]:
 
         messages.append(m)
 
 
+    # Aktuelle Nachricht
     messages.append(
         {
             "role": "user",
@@ -252,7 +254,7 @@ bleibe aber locker und übertreibe nicht.
 
 
     # =====================================================
-    # GROQ REQUEST
+    # GROQ
     # =====================================================
 
     try:
@@ -267,14 +269,15 @@ bleibe aber locker und übertreibe nicht.
 
 
         completion = groq_client.chat.completions.create(
+
             model=GROQ_MODEL,
+
             messages=messages,
+
             max_tokens=120,
+
             temperature=0.9
         )
-
-
-        print("GROQ ANFRAGE ERFOLGREICH")
 
 
         # -------------------------------------------------
@@ -284,7 +287,7 @@ bleibe aber locker und übertreibe nicht.
         if not completion.choices:
 
             print(
-                "GROQ FEHLER: Keine choices erhalten."
+                "GROQ FEHLER: keine antwort erhalten."
             )
 
             return "bruder ich hab gerade keine antwort 😭"
@@ -296,23 +299,20 @@ bleibe aber locker und übertreibe nicht.
         if not reply:
 
             print(
-                "GROQ FEHLER: Leere Antwort erhalten."
+                "GROQ FEHLER: leere antwort erhalten."
             )
 
             return "bruder ich hab gerade nichts zu sagen 😭"
 
 
-        # -------------------------------------------------
-        # KLEINSCHREIBUNG
-        # -------------------------------------------------
-
+        # Klein schreiben
         reply = reply.lower().strip()
 
 
         print("GROQ ANTWORT:")
         print(reply)
+
         print("========================================")
-        print("")
 
 
         return reply
@@ -340,8 +340,8 @@ bleibe aber locker und übertreibe nicht.
         )
 
         print(
-            "REPR:",
-            repr(e)
+            "MODELL:",
+            GROQ_MODEL
         )
 
         print(
@@ -354,16 +354,11 @@ bleibe aber locker und übertreibe nicht.
             prompt
         )
 
-        print(
-            "MODELL:",
-            GROQ_MODEL
-        )
-
         print("########################################")
         print("######### ENDE GROQ FEHLER ############")
         print("########################################")
         print("")
-        print("")
+
 
         return (
             "bruder meine ki hat gerade kurz schluckauf 😭"
@@ -423,7 +418,7 @@ async def on_message(message):
         return
 
 
-    # nur erlaubter Channel
+    # falscher Channel
     if message.channel.id != ALLOWED_CHANNEL_ID:
         return
 
@@ -464,7 +459,7 @@ async def on_message(message):
 
 
     # =====================================================
-    # BEGRÜSSUNG
+    # BEGRÜSSUNGEN
     # =====================================================
 
     if content.lower() in [
@@ -493,7 +488,7 @@ async def on_message(message):
 
 
     # =====================================================
-    # KI AUFRUF
+    # KI
     # =====================================================
 
     reply = ask_ai(
@@ -530,7 +525,7 @@ async def on_message(message):
 
 
     # =====================================================
-    # DISCORD SENDEN
+    # DISCORD ANTWORT
     # =====================================================
 
     try:
@@ -547,7 +542,6 @@ async def on_message(message):
         print("FEHLERTYP:", type(e).__name__)
         print("FEHLER:", str(e))
         print("========================================")
-        print("")
 
 
 # =========================================================
@@ -584,10 +578,4 @@ except Exception as e:
         str(e)
     )
 
-    print(
-        "REPR:",
-        repr(e)
-    )
-
     print("########################################")
-    print("")
