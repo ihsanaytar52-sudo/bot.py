@@ -10,25 +10,23 @@ from groq import Groq
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GROQ_KEY = os.getenv("GROQ_KEY")
 
-# Nur dieser Channel darf mit Abu Olaf chatten
 ALLOWED_CHANNEL_ID = 1507649049602424976
 
-# Groq Modell
 GROQ_MODEL = "llama-3.1-8b-instant"
 
 
 # =========================================================
-# PRÜFEN, OB KEYS VORHANDEN SIND
+# START-CHECKS
 # =========================================================
 
 if not DISCORD_TOKEN:
     raise SystemExit(
-        "FEHLER: DISCORD_TOKEN fehlt in Railway Variables."
+        "FEHLER: DISCORD_TOKEN fehlt in Railway."
     )
 
 if not GROQ_KEY:
     raise SystemExit(
-        "FEHLER: GROQ_KEY fehlt in Railway Variables."
+        "FEHLER: GROQ_KEY fehlt in Railway."
     )
 
 
@@ -36,9 +34,23 @@ if not GROQ_KEY:
 # GROQ
 # =========================================================
 
-groq_client = Groq(
-    api_key=GROQ_KEY
-)
+try:
+
+    groq_client = Groq(
+        api_key=GROQ_KEY
+    )
+
+    print("Groq Client wurde erfolgreich erstellt.")
+
+except Exception as e:
+
+    print("========================================")
+    print("FEHLER BEIM ERSTELLEN DES GROQ CLIENTS")
+    print("Fehlertyp:", type(e).__name__)
+    print("Fehler:", str(e))
+    print("========================================")
+
+    raise
 
 
 # =========================================================
@@ -59,10 +71,8 @@ client = discord.Client(
 
 memory = []
 
-# Freundschaft pro User
 friendship = {}
 
-# Stimmung
 mood = 0
 
 
@@ -108,7 +118,7 @@ def get_mood():
 
 
 # =========================================================
-# KI ANFRAGE
+# KI
 # =========================================================
 
 def ask_ai(prompt, user, provoke):
@@ -116,7 +126,7 @@ def ask_ai(prompt, user, provoke):
     global mood
 
     # -----------------------------------------------------
-    # USER ANLEGEN
+    # USER
     # -----------------------------------------------------
 
     if user not in friendship:
@@ -126,7 +136,7 @@ def ask_ai(prompt, user, provoke):
 
 
     # -----------------------------------------------------
-    # STIMMUNG
+    # MOOD
     # -----------------------------------------------------
 
     if "lol" in prompt.lower():
@@ -171,22 +181,22 @@ def ask_ai(prompt, user, provoke):
     system_text = f"""
 du bist abu olaf.
 
-deine regeln:
+regeln:
 
 - du heißt abu olaf
 - wenn jemand fragt wer du bist, sag dass du abu olaf bist
-- antworte normalerweise kurz mit 1 bis 3 sätzen
+- antworte kurz, normalerweise 1 bis 3 sätze
 - schreibe ausschließlich kleinbuchstaben
 - sei locker, lustig und direkt
-- benutze manchmal "bruder", "digga" oder "lan"
+- benutze manchmal bruder, digga oder lan
 - du darfst emojis benutzen
 - wenn jemand freundlich ist, sei freundlich
 - wenn jemand mit dir freunde sein will, kannst du ihn als freund akzeptieren
 - merke dir den verlauf des chats
 - bleibe immer in deiner rolle als abu olaf
-- bei normalen beleidigungen darfst du frech zurückantworten
+- bei beleidigungen darfst du frech zurückantworten
 - übertreibe aber nicht
-- keine langen texte
+- schreibe keine langen texte
 - keine großschreibung
 
 aktueller user:
@@ -226,13 +236,11 @@ bleibe aber locker und übertreibe nicht.
     ]
 
 
-    # Letzte Nachrichten aus Memory
     for m in memory[-10:]:
 
         messages.append(m)
 
 
-    # Aktuelle Nachricht
     messages.append(
         {
             "role": "user",
@@ -241,15 +249,20 @@ bleibe aber locker und übertreibe nicht.
     )
 
 
-    # -----------------------------------------------------
-    # GROQ
-    # -----------------------------------------------------
+    # =====================================================
+    # GROQ REQUEST
+    # =====================================================
 
     try:
 
-        print(
-            f"KI Anfrage von {user}: {prompt}"
-        )
+        print("")
+        print("========================================")
+        print("GROQ ANFRAGE")
+        print("User:", user)
+        print("Nachricht:", prompt)
+        print("Modell:", GROQ_MODEL)
+        print("========================================")
+
 
         completion = groq_client.chat.completions.create(
             model=GROQ_MODEL,
@@ -259,51 +272,89 @@ bleibe aber locker und übertreibe nicht.
         )
 
 
-        # Antwort holen
+        print("GROQ ANFRAGE ERFOLGREICH")
+
+
+        # -------------------------------------------------
+        # ANTWORT PRÜFEN
+        # -------------------------------------------------
+
+        if not completion.choices:
+
+            print("GROQ FEHLER: Keine choices erhalten.")
+
+            return "bruder ich hab gerade keine antwort 😭"
+
+
         reply = completion.choices[0].message.content
 
 
         if not reply:
 
-            print(
-                "GROQ FEHLER: leere Antwort"
-            )
+            print("GROQ FEHLER: Leere Antwort erhalten.")
 
             return "bruder ich hab gerade nichts zu sagen 😭"
 
 
-        # -------------------------------------------------
-        # KLEINSCHREIBUNG
-        # -------------------------------------------------
-
         reply = reply.lower().strip()
 
 
-        print(
-            f"KI Antwort: {reply}"
-        )
+        print("GROQ ANTWORT:")
+        print(reply)
+        print("========================================")
+        print("")
 
 
         return reply
 
 
+    # =====================================================
+    # FEHLER
+    # =====================================================
+
     except Exception as e:
 
+        print("")
+        print("")
+        print("########################################")
+        print("########### GROQ FEHLER ################")
+        print("########################################")
+
         print(
-            "========================================"
+            "FEHLERTYP:",
+            type(e).__name__
         )
 
         print(
-            "GROQ FEHLER:"
+            "FEHLER:",
+            str(e)
         )
 
         print(
+            "REPR:",
             repr(e)
         )
 
         print(
-            "========================================"
+            "USER:",
+            user
         )
+
+        print(
+            "NACHRICHT:",
+            prompt
+        )
+
+        print(
+            "MODELL:",
+            GROQ_MODEL
+        )
+
+        print("########################################")
+        print("######### ENDE GROQ FEHLER ############")
+        print("########################################")
+        print("")
+        print("")
 
 
         return (
@@ -318,25 +369,33 @@ bleibe aber locker und übertreibe nicht.
 @client.event
 async def on_ready():
 
+    print("")
+    print("========================================")
+    print("ABU OLAF IST ONLINE")
+    print("========================================")
+
     print(
-        "========================================"
+        "Bot:",
+        client.user
     )
 
     print(
-        f"abu olaf ist online als {client.user}"
+        "Bot ID:",
+        client.user.id
     )
 
     print(
-        f"groq modell: {GROQ_MODEL}"
+        "Groq Modell:",
+        GROQ_MODEL
     )
 
     print(
-        f"chat channel: {ALLOWED_CHANNEL_ID}"
+        "Erlaubter Channel:",
+        ALLOWED_CHANNEL_ID
     )
 
-    print(
-        "========================================"
-    )
+    print("========================================")
+    print("")
 
 
 # =========================================================
@@ -346,22 +405,21 @@ async def on_ready():
 @client.event
 async def on_message(message):
 
-    # eigene Nachrichten ignorieren
+    # eigener Bot
     if message.author == client.user:
         return
 
 
-    # andere bots ignorieren
+    # andere Bots
     if message.author.bot:
         return
 
 
-    # nur erlaubter channel
+    # falscher Channel
     if message.channel.id != ALLOWED_CHANNEL_ID:
         return
 
 
-    # Nachricht
     content = message.content.strip()
 
 
@@ -370,12 +428,11 @@ async def on_message(message):
         return
 
 
-    # User Name
     user = message.author.display_name
 
 
     print(
-        f"Discord Nachricht von {user}: {content}"
+        f"DISCORD NACHRICHT | {user}: {content}"
     )
 
 
@@ -399,7 +456,7 @@ async def on_message(message):
 
 
     # =====================================================
-    # BEGRÜSSUNGEN
+    # BEGRÜSSUNG
     # =====================================================
 
     if content.lower() in [
@@ -428,7 +485,7 @@ async def on_message(message):
 
 
     # =====================================================
-    # KI
+    # KI AUFRUF
     # =====================================================
 
     reply = ask_ai(
@@ -458,14 +515,14 @@ async def on_message(message):
     )
 
 
-    # Memory begrenzen
+    # maximal 20 memory einträge
     if len(memory) > 20:
 
         memory[:] = memory[-20:]
 
 
     # =====================================================
-    # DISCORD ANTWORT
+    # DISCORD SENDEN
     # =====================================================
 
     try:
@@ -474,22 +531,56 @@ async def on_message(message):
             reply[:1900]
         )
 
+
     except discord.HTTPException as e:
 
-        print(
-            f"Discord Sende-Fehler: {e}"
-        )
+        print("")
+        print("========================================")
+        print("DISCORD SEND FEHLER")
+        print("Fehlertyp:", type(e).__name__)
+        print("Fehler:", str(e))
+        print("========================================")
+        print("")
 
 
 # =========================================================
 # START
 # =========================================================
 
-print(
-    "abu olaf wird gestartet..."
-)
+print("")
+print("========================================")
+print("ABU OLAF WIRD GESTARTET")
+print("========================================")
 
 
-client.run(
-    DISCORD_TOKEN
-)
+try:
+
+    client.run(
+        DISCORD_TOKEN
+    )
+
+
+except Exception as e:
+
+    print("")
+    print("########################################")
+    print("########### BOT START FEHLER ###########")
+    print("########################################")
+
+    print(
+        "FEHLERTYP:",
+        type(e).__name__
+    )
+
+    print(
+        "FEHLER:",
+        str(e)
+    )
+
+    print(
+        "REPR:",
+        repr(e)
+    )
+
+    print("########################################")
+    print("")
