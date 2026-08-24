@@ -32,10 +32,19 @@ def is_provocation(text):
         "hurensohn",
         "kahba",
         "hure",
-        "schlampe"
+        "schlampe",
+        "arschloch",
+        "idiot",
+        "wichser",
+        "schwanz",
+        "hundesohn",
+        "deine mutter",
+        "halt die fresse"
     ]
 
-    return any(word in text.lower() for word in bad_words)
+    text = text.lower()
+
+    return any(word in text for word in bad_words)
 
 
 # =========================
@@ -107,10 +116,15 @@ REGELN:
 - keine unnötig langen antworten
 - antworte natürlich und nicht wie ein roboter
 
-wenn jemand dich beleidigt:
-- bei leichten beleidigungen bleibst du entspannt
-- bei harten beleidigungen darfst du frech und sarkastisch antworten
-- übertreibe es aber nicht
+BEI PROVOKATIONEN:
+
+- wenn der user dich beleidigt, darfst du frech und schlagfertig zurückkontern
+- passe den konter an die beleidigung des users an
+- bleibe locker und sarkastisch
+- kurze konter sind besser als lange beleidigungen
+- du darfst umgangssprache wie "bruder", "digga" oder "lan" verwenden
+- werde nicht grundlos aggressiv
+- wenn es keine echte beleidigung ist, bleib normal
 
 user status:
 {friend_text}
@@ -119,10 +133,17 @@ stimmung:
 {get_mood()}
 """
 
+    # =========================
+    # PROVOCATION MODE
+    # =========================
     if provoke:
         system_text += """
-der user hat dich gerade provoziert.
-du darfst etwas frecher und sarkastischer reagieren.
+WICHTIG:
+der user hat dich gerade beleidigt oder provoziert.
+
+kontere frech, schlagfertig und sarkastisch.
+du darfst eine leichte beleidigung als humorvollen konter verwenden.
+mach daraus keinen langen streit.
 """
 
     # =========================
@@ -135,11 +156,9 @@ du darfst etwas frecher und sarkastischer reagieren.
         }
     ]
 
-    # Letzte Nachrichten als Memory
     for m in memory[-10:]:
         messages.append(m)
 
-    # Aktuelle Nachricht
     messages.append({
         "role": "user",
         "content": f"{user}: {prompt}"
@@ -211,17 +230,16 @@ async def on_ready():
 @client.event
 async def on_message(message):
 
-    # Eigene Nachrichten ignorieren
+    # eigene Nachrichten ignorieren
     if message.author == client.user:
         return
 
-    # Nur erlaubten Channel benutzen
+    # nur erlaubten channel benutzen
     if message.channel.id != ALLOWED_CHANNEL_ID:
         return
 
     content = message.content.strip()
 
-    # Leere Nachrichten ignorieren
     if not content:
         return
 
@@ -268,6 +286,9 @@ async def on_message(message):
     # =========================
     provoke = is_provocation(content)
 
+    if provoke:
+        print(f"🔥 PROVOKATION VON {user}: {content}")
+
     # =========================
     # KI ANTWORT
     # =========================
@@ -301,7 +322,7 @@ async def on_message(message):
         "content": reply
     })
 
-    # Memory begrenzen
+    # maximal 20 memory-einträge
     if len(memory) > 20:
         memory[:] = memory[-20:]
 
@@ -310,14 +331,16 @@ async def on_message(message):
     # =========================
     try:
 
-        # Discord erlaubt maximal 2000 Zeichen
         await message.channel.send(
             reply[:1900]
         )
 
     except discord.HTTPException as e:
 
-        print("❌ DISCORD SENDE-FEHLER:", repr(e))
+        print(
+            "❌ DISCORD SENDE-FEHLER:",
+            repr(e)
+        )
 
 
 # =========================
