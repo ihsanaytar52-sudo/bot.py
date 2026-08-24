@@ -98,10 +98,6 @@ def get_roast(prompt, user):
     if "hund" in text:
         return f"dein vater der bastard "
 
-   - antworte meistens kurz mit 1–2 sätzen
-   - wechsel die beleidungen öfters ab zb ( hundesohn, bastard, schwanzlutscher, schlampe, du x beiniger hurensohn, fick ich deine oma, deine mutter geht anschaffen)
-   - manchmal antworte auch von die selbst mit deiner ki
-
     return None
 
 
@@ -199,6 +195,7 @@ regeln:
 - bleibe immer in deiner rolle als abu olaf
 - keine unnötig langen antworten
 - rede natürlich und nicht wie ein roboter
+- wenn jemand dich beleidgt nutze die wörter "hundesohn", "bastard", "schwanzlutscher", "schlampe", "du x beiniger hurensohn", "fick ich deine oma", "deine mutter geht anschaffen", "komm halten", "willst du eier lecken"
 
 user status:
 {friend_text}
