@@ -74,6 +74,9 @@ def ask_ai(prompt, user, provoke):
     else:
         friend_text = f"Neuer User: {user}"
 
+    # =========================
+    # GROQ API
+    # =========================
     url = "https://api.groq.com/openai/v1/chat/completions"
 
     headers = {
@@ -82,31 +85,37 @@ def ask_ai(prompt, user, provoke):
     }
 
     system_text = f"""
-Du bist Abu Olaf.
+du bist abu olaf.
 
-REGELN:
-- Wenn jemand fragt wer du bist, sag: "Ich bin Abu Olaf lan 😏"
-- Antworte kurz (1–2 Sätze)
-- Nutze manchmal (bruder, digga)
-- Sei locker, lustig und freundlich
-- wenn jeamnd mit dir freunde sein will dann lässt du es zu
-- Merke dir User aus dem Chat
-. immer den user sein name in der nacht erwähnen
-- Bleibe in deiner Rolle als Abu Olaf
-- wenn jeamnd dich beleidigt nutze beleidigungen aber nur bei harten beleidigungen sonst antwortest du normal ( ayri, bastard, schwanz, schwanzlutscher, hundesohn, schlampe, kahba, deine mutter, blass mir eine, lutsch mein fetten schwanz )
-- schreib nur in klein keine grossschreibung
+regeln:
+- wenn jemand fragt wer du bist, sag: "ich bin abu olaf lan 😏"
+- antworte kurz (1–2 sätze)
+- nutze manchmal bruder oder digga
+- sei locker, lustig und freundlich
+- wenn jemand mit dir freunde sein will, lässt du es zu
+- merke dir user aus dem chat
+- erwähne den usernamen passend im gespräch
+- bleibe in deiner rolle als abu olaf
+- wenn jemand dich beleidigt, darfst du frech reagieren
+- schreibe nur kleinbuchstaben
+- keine unnötig langen antworten
 
-User Status:
+user status:
 {friend_text}
 
-Stimmung:
+stimmung:
 {get_mood()}
 """
 
     if provoke:
-        system_text += "\nDer User hat dich provoziert, du darfst etwas frecher reagieren."
+        system_text += "\nder user hat dich provoziert, du darfst etwas frecher reagieren."
 
-    messages = [{"role": "system", "content": system_text}]
+    messages = [
+        {
+            "role": "system",
+            "content": system_text
+        }
+    ]
 
     for m in memory[-10:]:
         messages.append(m)
@@ -123,7 +132,15 @@ Stimmung:
         "temperature": 0.9
     }
 
+    # =========================
+    # GROQ REQUEST
+    # =========================
     try:
+
+        if not GROQ_KEY:
+            print("FEHLER: GROQ_KEY fehlt!")
+            return "❌ groq key fehlt"
+
         r = requests.post(
             url,
             headers=headers,
@@ -131,24 +148,46 @@ Stimmung:
             timeout=20
         )
 
-        print("STATUS:", r.status_code)
+        print("GROQ STATUS:", r.status_code)
 
-        if r.status_code == 200:
-            return r.json()["choices"][0]["message"]["content"]
-        else:
-            print(r.text)
-            return "❌ KI Fehler"
+        # Nur Fehlerdetails ausgeben, niemals den API-Key
+        if r.status_code != 200:
+            print("GROQ RESPONSE:", r.text[:1000])
+            return f"❌ groq fehler {r.status_code}"
+
+        result = r.json()
+
+        if "choices" not in result or not result["choices"]:
+            print("UNGÜLTIGE GROQ ANTWORT:", result)
+            return "❌ ungültige ki antwort"
+
+        return result["choices"][0]["message"]["content"].strip()
+
+    except requests.exceptions.Timeout:
+        print("GROQ TIMEOUT")
+        return "❌ groq antwortet nicht"
+
+    except requests.exceptions.RequestException as e:
+        print("GROQ REQUEST FEHLER:", e)
+        return "❌ verbindungsfehler zur ki"
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return f"❌ Fehler: {e}"
+        return f"❌ fehler: {e}"
+
 # =========================
 # EVENTS
 # =========================
 @client.event
 async def on_ready():
     print(f"Abu Olaf ist online als {client.user}")
+
+    if not DISCORD_TOKEN:
+        print("WARNUNG: DISCORD_TOKEN fehlt!")
+
+    if not GROQ_KEY:
+        print("WARNUNG: GROQ_KEY fehlt!")
 
 @client.event
 async def on_message(message):
@@ -160,31 +199,60 @@ async def on_message(message):
         return
 
     content = message.content.strip()
+
+    if not content:
+        return
+
     user = message.author.display_name
 
-    # Namensfragen
+    # =========================
+    # NAMENSFRAGEN
+    # =========================
     if content.lower() in [
         "wer bist du",
         "wie heißt du",
         "dein name",
         "wer bistn du"
     ]:
-        await message.channel.send("Ich bin Abu Olaf lan 😏")
+        await message.channel.send("ich bin abu olaf lan 😏")
         return
 
-    # Begrüßung
-    if content.lower() in ["hi", "hallo", "hey", "selam"]:
-        await message.channel.send(f"👋 Selam {user}, ich bin Abu Olaf lan 😏")
+    # =========================
+    # BEGRÜSSUNG
+    # =========================
+    if content.lower() in [
+        "hi",
+        "hallo",
+        "hey",
+        "selam"
+    ]:
+        await message.channel.send(
+            f"👋 selam {user}, ich bin abu olaf lan 😏"
+        )
         return
 
+    # =========================
+    # PROVOKATION
+    # =========================
     provoke = is_provocation(content)
 
+    # =========================
+    # KI
+    # =========================
     try:
-        reply = ask_ai(content, user, provoke)
-    except Exception as e:
-        print(f"KI-Fehler: {e}")
-        reply = "❌ Fehler bei der KI."
+        reply = ask_ai(
+            content,
+            user,
+            provoke
+        )
 
+    except Exception as e:
+        print(f"KI-FEHLER: {e}")
+        reply = "❌ fehler bei der ki"
+
+    # =========================
+    # MEMORY
+    # =========================
     memory.append({
         "role": "user",
         "content": f"{user}: {content}"
@@ -198,9 +266,19 @@ async def on_message(message):
     if len(memory) > 20:
         memory[:] = memory[-20:]
 
+    # =========================
+    # DISCORD ANTWORT
+    # =========================
     try:
         await message.channel.send(reply[:1900])
+
     except discord.HTTPException as e:
-        print(f"Sende-Fehler: {e}")
+        print(f"SENDE-FEHLER: {e}")
+
+# =========================
+# START
+# =========================
+if not DISCORD_TOKEN:
+    print("FEHLER: DISCORD_TOKEN ist nicht gesetzt!")
 
 client.run(DISCORD_TOKEN)
