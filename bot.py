@@ -22,10 +22,12 @@ memory = []
 friendship = {}
 mood = 0
 
+
 # =========================
 # PROVOCATION CHECK
 # =========================
 def is_provocation(text):
+
     bad_words = [
         "hund",
         "bastard",
@@ -39,7 +41,10 @@ def is_provocation(text):
         "schwanz",
         "hundesohn",
         "deine mutter",
-        "halt die fresse"
+        "halt die fresse",
+        "fresse",
+        "verpiss dich",
+        "fotze"
     ]
 
     text = text.lower()
@@ -51,10 +56,13 @@ def is_provocation(text):
 # MOOD TEXT
 # =========================
 def get_mood():
+
     if mood <= -2:
         return "genervt und leicht sarkastisch"
+
     elif mood >= 2:
         return "locker und freundlich"
+
     else:
         return "normal und entspannt"
 
@@ -90,8 +98,10 @@ def ask_ai(prompt, user, provoke):
     # =========================
     if friendship[user] > 15:
         friend_text = f"{user} ist ein stammuser 😏"
+
     elif friendship[user] > 5:
         friend_text = f"du kennst {user} gut"
+
     else:
         friend_text = f"neuer user: {user}"
 
@@ -101,30 +111,34 @@ def ask_ai(prompt, user, provoke):
     system_text = f"""
 du bist abu olaf.
 
-REGELN:
+deine rolle:
+du bist abu olaf, ein lockerer, lustiger discord-bot.
+
+regeln:
 
 - wenn jemand fragt wer du bist, sag:
   "ich bin abu olaf lan 😏"
 
-- antworte kurz, meistens 1–2 sätze
-- nutze manchmal "bruder" oder "digga"
-- sei locker, lustig und freundlich
-- wenn jemand mit dir freunde sein will, lässt du es zu
+- antworte meistens kurz mit 1–2 sätzen
+- schreibe nur kleinbuchstaben
+- nutze manchmal "bruder", "digga" oder "lan"
+- sei locker und natürlich
+- sei freundlich, wenn der user normal mit dir redet
+- wenn jemand mit dir freunde sein will, akzeptiere es
 - merke dir user aus dem chat
 - bleibe immer in deiner rolle als abu olaf
-- schreibe nur kleinbuchstaben
-- keine unnötig langen antworten
-- antworte natürlich und nicht wie ein roboter
+- keine langen unnötigen antworten
+- rede nicht wie ein roboter
 
-BEI PROVOKATIONEN:
+BEI PROVOKATION:
 
-- wenn der user dich beleidigt, darfst du frech und schlagfertig zurückkontern
-- passe den konter an die beleidigung des users an
-- bleibe locker und sarkastisch
-- kurze konter sind besser als lange beleidigungen
-- du darfst umgangssprache wie "bruder", "digga" oder "lan" verwenden
+wenn der user dich beleidigt oder provoziert:
+- darfst du frech reagieren
+- darfst du schlagfertig und sarkastisch antworten
+- darfst du umgangssprachlich antworten
+- passe deinen konter an die provokation an
+- bleibe kurz
 - werde nicht grundlos aggressiv
-- wenn es keine echte beleidigung ist, bleib normal
 
 user status:
 {friend_text}
@@ -137,13 +151,13 @@ stimmung:
     # PROVOCATION MODE
     # =========================
     if provoke:
-        system_text += """
-WICHTIG:
-der user hat dich gerade beleidigt oder provoziert.
 
-kontere frech, schlagfertig und sarkastisch.
-du darfst eine leichte beleidigung als humorvollen konter verwenden.
-mach daraus keinen langen streit.
+        system_text += """
+der user hat dich gerade provoziert.
+
+reagiere jetzt frech, schlagfertig und sarkastisch.
+ein kurzer humorvoller konter ist erwünscht.
+du kannst umgangssprache wie bruder, digga oder lan verwenden.
 """
 
     # =========================
@@ -156,9 +170,11 @@ mach daraus keinen langen streit.
         }
     ]
 
+    # letzte nachrichten laden
     for m in memory[-10:]:
         messages.append(m)
 
+    # aktuelle nachricht
     messages.append({
         "role": "user",
         "content": f"{user}: {prompt}"
@@ -170,7 +186,9 @@ mach daraus keinen langen streit.
     try:
 
         if not GROQ_KEY:
+
             print("❌ GROQ_KEY FEHLT!")
+
             return "❌ groq key fehlt"
 
         groq_client = Groq(
@@ -180,26 +198,55 @@ mach daraus keinen langen streit.
         completion = groq_client.chat.completions.create(
             model="openai/gpt-oss-20b",
             messages=messages,
-            max_tokens=120,
-            temperature=0.9
+            max_completion_tokens=300,
+            temperature=0.7,
+            include_reasoning=False
         )
 
         print("GROQ: OK")
 
+        # =========================
+        # CHOICES CHECK
+        # =========================
         if not completion.choices:
+
             print("❌ GROQ: KEINE CHOICES")
+
             return "❌ keine ki antwort"
 
+        # =========================
+        # RESPONSE
+        # =========================
         reply = completion.choices[0].message.content
 
+        print(
+            "GROQ ANTWORT:",
+            repr(reply)
+        )
+
+        # =========================
+        # EMPTY RESPONSE CHECK
+        # =========================
         if not reply:
+
             print("❌ GROQ: LEERE ANTWORT")
+
+            print(
+                "GROQ MESSAGE:",
+                completion.choices[0].message
+            )
+
             return "❌ leere ki antwort"
 
         return reply.strip()
 
     except Exception as e:
-        print("❌ GROQ FEHLER:", repr(e))
+
+        print(
+            "❌ GROQ FEHLER:",
+            repr(e)
+        )
+
         return "❌ groq fehler"
 
 
@@ -209,9 +256,11 @@ mach daraus keinen langen streit.
 @client.event
 async def on_ready():
 
-    print("=================================")
-    print(f"Abu Olaf ist online als {client.user}")
-    print("=================================")
+    print("==============================")
+    print(
+        f"Abu Olaf ist online als {client.user}"
+    )
+    print("==============================")
 
     if DISCORD_TOKEN:
         print("DISCORD_TOKEN: OK")
@@ -230,7 +279,7 @@ async def on_ready():
 @client.event
 async def on_message(message):
 
-    # eigene Nachrichten ignorieren
+    # eigene nachrichten ignorieren
     if message.author == client.user:
         return
 
@@ -287,7 +336,10 @@ async def on_message(message):
     provoke = is_provocation(content)
 
     if provoke:
-        print(f"🔥 PROVOKATION VON {user}: {content}")
+
+        print(
+            f"🔥 PROVOKATION VON {user}: {content}"
+        )
 
     # =========================
     # KI ANTWORT
@@ -302,7 +354,10 @@ async def on_message(message):
 
     except Exception as e:
 
-        print("❌ KI-FEHLER:", repr(e))
+        print(
+            "❌ KI-FEHLER:",
+            repr(e)
+        )
 
         reply = "❌ fehler bei der ki"
 
@@ -322,8 +377,9 @@ async def on_message(message):
         "content": reply
     })
 
-    # maximal 20 memory-einträge
+    # maximal 20 einträge
     if len(memory) > 20:
+
         memory[:] = memory[-20:]
 
     # =========================
@@ -347,10 +403,16 @@ async def on_message(message):
 # START CHECK
 # =========================
 if not DISCORD_TOKEN:
-    print("❌ FEHLER: DISCORD_TOKEN ist nicht gesetzt!")
+
+    print(
+        "❌ FEHLER: DISCORD_TOKEN ist nicht gesetzt!"
+    )
 
 if not GROQ_KEY:
-    print("❌ FEHLER: GROQ_KEY ist nicht gesetzt!")
+
+    print(
+        "❌ FEHLER: GROQ_KEY ist nicht gesetzt!"
+    )
 
 
 # =========================
