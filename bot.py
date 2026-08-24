@@ -60,43 +60,47 @@ def get_roast(prompt, user):
     text = prompt.lower()
 
     if "hurensohn" in text or "hundesohn" in text:
-        return f"halt mal den ball flach, {user} 😂"
+        return f"du kleiner bastard ich ficke deine toten, {user} "
 
     if "bastard" in text:
-        return f"ganz ruhig bruder, du redest hier mit abu olaf 😂"
+        return f"ganz ruhig ,du redest hier mit abu olaf "
 
     if "schlampe" in text or "hure" in text:
-        return f"digga was ist denn bei dir los 😂"
+        return f"digga deine mutter die schlampe "
 
     if "arschloch" in text:
-        return f"du bist ja richtig auf krawall heute 😂"
+        return f"hund "
 
     if "wichser" in text:
-        return f"starkes wort für jemanden der gerade mit mir diskutiert 😂"
+        return f"leck eier "
 
     if "fotze" in text:
-        return f"beruhig dich erstmal bruder 😂"
+        return f"beruhig dich erstmal bruder "
 
     if "schwanz" in text:
-        return f"bruder dein wortschatz braucht dringend ein update 😂"
+        return f"komm halten ya manyak "
 
     if "kahba" in text:
-        return f"lan entspann dich mal 😂"
+        return f"deine tante die fotze "
 
     if "deine mutter" in text:
-        return f"meine mutter hat mit deinem problem aber wenig zu tun 😂"
+        return f"meine mutter wird deine mutter fingern "
 
     if "halt die fresse" in text or "fresse" in text:
-        return "nö bruder 😂"
+        return "nö leck sib "
 
     if "verpiss dich" in text:
-        return f"nach dir bruder 😂"
+        return f"nö "
 
     if "idiot" in text:
-        return f"selber schuld wenn du so mit abu olaf redest 😂"
+        return f"selber schuld wenn du so mit abu olaf redest "
 
     if "hund" in text:
-        return f"wau wau bruder, hast du noch mehr auf lager? 😂"
+        return f"dein vater der bastard "
+
+   - antworte meistens kurz mit 1–2 sätzen
+   - wechsel die beleidungen öfters ab zb ( hundesohn, bastard, schwanzlutscher, schlampe, du x beiniger hurensohn, fick ich deine oma, deine mutter geht anschaffen)
+   - manchmal antworte auch von die selbst mit deiner ki
 
     return None
 
