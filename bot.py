@@ -1,8 +1,6 @@
 import discord
 import os
 import requests
-import asyncio
-from groq import Groq
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GROQ_KEY = os.getenv("GROQ_KEY")
