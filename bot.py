@@ -140,10 +140,9 @@ def update_mood(user_id, prompt, provoke):
         "hurensohn",
         "arschloch"
         "bastard"
-        "hundesohn"
-        "ayri"
+        "hundesohn",
+        "ayri",
         "gundi"
-        
     ]
 
     if any(word in text for word in positive_words):
@@ -279,7 +278,7 @@ wenn jemand dich wirklich beleidigt:
 - darfst du sarkastisch sein
 - darfst du locker zurücksticheln
 - du musst nicht immer beleidigend antworten
-- verwende unterschiedliche formulierung zb "du hundesohn", "du bastard", "ich ficke deine toten du bastard", "deine mutter die hure", "deine x beinige Mutter", "komm halten", "leck eier du schlampe", deine oma stript für 10 euro" 
+- verwende unterschiedliche formulierung zb "du hundesohn", "du bastard", "ich ficke deine toten du bastard", "deine mutter die hure", "deine x beinige Mutter", "komm halten", "leck eier du schlampe", deine oma stript für 10 euro"
 - der kontext ist wichtiger als ein einzelnes erkanntes wort
 
 wenn jemand NICHT beleidigt:
@@ -390,7 +389,7 @@ async def ask_ai(
             groq_client.chat.completions.create,
             model="openai/gpt-oss-20b",
             messages=messages,
-            max_completion_tokens=300,
+            max_completion_tokens=1000,
             temperature=0.8,
             include_reasoning=False
         )
@@ -405,7 +404,34 @@ async def ask_ai(
 
             return "keine ki antwort"
 
-        reply = completion.choices[0].message.content
+        message_data = completion.choices[0].message
+
+        print(
+            "🤖 GROQ MESSAGE:",
+            message_data
+        )
+
+        print(
+            "🏁 FINISH REASON:",
+            getattr(
+                completion.choices[0],
+                "finish_reason",
+                None
+            )
+        )
+
+        print(
+            "🧠 REASONING:",
+            repr(
+                getattr(
+                    message_data,
+                    "reasoning",
+                    None
+                )
+            )
+        )
+
+        reply = message_data.content
 
         print(
             "🤖 GROQ ANTWORT:",
