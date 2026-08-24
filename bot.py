@@ -32,6 +32,7 @@ def is_provocation(text):
         "hund",
         "bastard",
         "hurensohn",
+        "hundesohn",
         "kahba",
         "hure",
         "schlampe",
@@ -39,17 +40,65 @@ def is_provocation(text):
         "idiot",
         "wichser",
         "schwanz",
-        "hundesohn",
+        "fotze",
         "deine mutter",
         "halt die fresse",
         "fresse",
-        "verpiss dich",
-        "fotze"
+        "verpiss dich"
     ]
 
     text = text.lower()
 
     return any(word in text for word in bad_words)
+
+
+# =========================
+# DIREKTER KONTER
+# =========================
+def get_roast(prompt, user):
+
+    text = prompt.lower()
+
+    if "hurensohn" in text or "hundesohn" in text:
+        return f"halt mal den ball flach, {user} 😂"
+
+    if "bastard" in text:
+        return f"ganz ruhig bruder, du redest hier mit abu olaf 😂"
+
+    if "schlampe" in text or "hure" in text:
+        return f"digga was ist denn bei dir los 😂"
+
+    if "arschloch" in text:
+        return f"du bist ja richtig auf krawall heute 😂"
+
+    if "wichser" in text:
+        return f"starkes wort für jemanden der gerade mit mir diskutiert 😂"
+
+    if "fotze" in text:
+        return f"beruhig dich erstmal bruder 😂"
+
+    if "schwanz" in text:
+        return f"bruder dein wortschatz braucht dringend ein update 😂"
+
+    if "kahba" in text:
+        return f"lan entspann dich mal 😂"
+
+    if "deine mutter" in text:
+        return f"meine mutter hat mit deinem problem aber wenig zu tun 😂"
+
+    if "halt die fresse" in text or "fresse" in text:
+        return "nö bruder 😂"
+
+    if "verpiss dich" in text:
+        return f"nach dir bruder 😂"
+
+    if "idiot" in text:
+        return f"selber schuld wenn du so mit abu olaf redest 😂"
+
+    if "hund" in text:
+        return f"wau wau bruder, hast du noch mehr auf lager? 😂"
+
+    return None
 
 
 # =========================
@@ -94,6 +143,23 @@ def ask_ai(prompt, user, provoke):
     mood = max(-5, min(5, mood))
 
     # =========================
+    # DIREKTER KONTER
+    # =========================
+    if provoke:
+
+        roast = get_roast(
+            prompt,
+            user
+        )
+
+        if roast:
+            print(
+                f"🔥 DIREKTER KONTER VON {user}: {roast}"
+            )
+
+            return roast
+
+    # =========================
     # USER STATUS
     # =========================
     if friendship[user] > 15:
@@ -112,7 +178,7 @@ def ask_ai(prompt, user, provoke):
 du bist abu olaf.
 
 deine rolle:
-du bist abu olaf, ein lockerer, lustiger discord-bot.
+du bist abu olaf, ein lockerer und lustiger discord-bot.
 
 regeln:
 
@@ -123,41 +189,18 @@ regeln:
 - schreibe nur kleinbuchstaben
 - nutze manchmal "bruder", "digga" oder "lan"
 - sei locker und natürlich
-- sei freundlich, wenn der user normal mit dir redet
+- sei freundlich bei normalen nachrichten
 - wenn jemand mit dir freunde sein will, akzeptiere es
 - merke dir user aus dem chat
 - bleibe immer in deiner rolle als abu olaf
-- keine langen unnötigen antworten
-- rede nicht wie ein roboter
-
-BEI PROVOKATION:
-
-wenn der user dich beleidigt oder provoziert:
-- darfst du frech reagieren
-- darfst du schlagfertig und sarkastisch antworten
-- darfst du umgangssprachlich antworten
-- passe deinen konter an die provokation an
-- bleibe kurz
-- werde nicht grundlos aggressiv
+- keine unnötig langen antworten
+- rede natürlich und nicht wie ein roboter
 
 user status:
 {friend_text}
 
 stimmung:
 {get_mood()}
-"""
-
-    # =========================
-    # PROVOCATION MODE
-    # =========================
-    if provoke:
-
-        system_text += """
-der user hat dich gerade provoziert.
-
-reagiere jetzt frech, schlagfertig und sarkastisch.
-ein kurzer humorvoller konter ist erwünscht.
-du kannst umgangssprache wie bruder, digga oder lan verwenden.
 """
 
     # =========================
@@ -170,11 +213,9 @@ du kannst umgangssprache wie bruder, digga oder lan verwenden.
         }
     ]
 
-    # letzte nachrichten laden
     for m in memory[-10:]:
         messages.append(m)
 
-    # aktuelle nachricht
     messages.append({
         "role": "user",
         "content": f"{user}: {prompt}"
@@ -205,18 +246,12 @@ du kannst umgangssprache wie bruder, digga oder lan verwenden.
 
         print("GROQ: OK")
 
-        # =========================
-        # CHOICES CHECK
-        # =========================
         if not completion.choices:
 
             print("❌ GROQ: KEINE CHOICES")
 
             return "❌ keine ki antwort"
 
-        # =========================
-        # RESPONSE
-        # =========================
         reply = completion.choices[0].message.content
 
         print(
@@ -224,17 +259,9 @@ du kannst umgangssprache wie bruder, digga oder lan verwenden.
             repr(reply)
         )
 
-        # =========================
-        # EMPTY RESPONSE CHECK
-        # =========================
         if not reply:
 
             print("❌ GROQ: LEERE ANTWORT")
-
-            print(
-                "GROQ MESSAGE:",
-                completion.choices[0].message
-            )
 
             return "❌ leere ki antwort"
 
@@ -279,7 +306,7 @@ async def on_ready():
 @client.event
 async def on_message(message):
 
-    # eigene nachrichten ignorieren
+    # eigene Nachrichten ignorieren
     if message.author == client.user:
         return
 
@@ -333,7 +360,9 @@ async def on_message(message):
     # =========================
     # PROVOCATION
     # =========================
-    provoke = is_provocation(content)
+    provoke = is_provocation(
+        content
+    )
 
     if provoke:
 
