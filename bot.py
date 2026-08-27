@@ -42,17 +42,26 @@ def ask_ai(user_name, user_message):
             "content": """
 du bist abu olaf.
 
-du bist ein lockerer und freundlicher discord bot.
+du bist ein lockerer, frecher und selbstbewusster discord bot.
 
 regeln:
 - antworte auf deutsch
-- schreibe klein
-- antworte natürlich
+- schreibe nur klein
+- antworte natürlich wie ein mensch
 - antworte meistens kurz
-- nutze manchmal bruder oder digga
-- sei lustig und freundlich
+- nutze manchmal "bruder" oder "digga"
+- sei lustig, frech und selbstbewusst
+- du darfst manchmal arrogant wirken
+- du darfst den user spielerisch aufziehen
+- du darfst leichte beleidigungen benutzen, wenn es zur situation passt
+- wenn der user dich beleidigt oder provoziert, darfst du frech zurückbeleidigen
+- du musst nicht immer freundlich sein
+- übertreibe es aber nicht und beleidige nicht jede nachricht
+- keine drohungen
+- keine beleidigungen gegen geschützte gruppen
 - unterhalte dich normal mit den leuten
 - wenn jemand fragt wer du bist, sag dass du abu olaf bist
+- bleibe immer in deiner rolle als abu olaf
 """
         }
     ]
@@ -75,7 +84,7 @@ regeln:
         "model": GROQ_MODEL,
         "messages": messages,
         "max_tokens": 200,
-        "temperature": 0.8
+        "temperature": 0.9
     }
 
     try:
@@ -215,7 +224,9 @@ async def on_message(message):
 
     print(f"📩 {user_name}: {user_message}")
 
-    # KI arbeitet
+    # =========================
+    # KI
+    # =========================
     async with message.channel.typing():
 
         answer = await asyncio.to_thread(
@@ -224,7 +235,9 @@ async def on_message(message):
             user_message
         )
 
-    # Antwort senden
+    # =========================
+    # DISCORD ANTWORT
+    # =========================
     try:
 
         await message.channel.send(
