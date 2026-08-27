@@ -52,6 +52,71 @@ def get_mood():
 
 
 # =========================
+# GROQ MODEL PRÜFEN
+# =========================
+def get_groq_model():
+    url = "https://api.groq.com/openai/v1/models"
+
+    headers = {
+        "Authorization": f"Bearer {GROQ_KEY}"
+    }
+
+    try:
+        r = requests.get(
+            url,
+            headers=headers,
+            timeout=20
+        )
+
+        print("GROQ MODEL STATUS:", r.status_code)
+
+        if r.status_code != 200:
+            print("❌ GROQ MODEL FEHLER:", r.text)
+            return None
+
+        models = r.json().get("data", [])
+
+        print("===================================")
+        print("VERFÜGBARE GROQ MODELLE:")
+        print("===================================")
+
+        for model in models:
+            model_id = model.get("id")
+            print(model_id)
+
+        print("===================================")
+
+        # Bevorzugte Modelle
+        preferred_models = [
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "openai/gpt-oss-20b",
+            "openai/gpt-oss-120b"
+        ]
+
+        available_ids = [
+            model.get("id")
+            for model in models
+        ]
+
+        for model in preferred_models:
+            if model in available_ids:
+                print("✅ BENUTZTES MODELL:", model)
+                return model
+
+        if available_ids:
+            print("✅ AUTOMATISCHES MODELL:", available_ids[0])
+            return available_ids[0]
+
+        print("❌ KEIN GROQ MODELL GEFUNDEN")
+        return None
+
+    except Exception as e:
+        print("❌ MODEL CHECK FEHLER:", e)
+        return None
+
+
+# =========================
 # AI FUNCTION
 # =========================
 def ask_ai(prompt, user, provoke):
@@ -114,7 +179,6 @@ Stimmung:
         }
     ]
 
-    # Letzte Nachrichten merken
     for m in memory[-10:]:
         messages.append(m)
 
@@ -123,8 +187,13 @@ Stimmung:
         "content": f"{user}: {prompt}"
     })
 
+    model = get_groq_model()
+
+    if not model:
+        return "❌ ich konnte kein verfügbares groq modell finden"
+
     data = {
-        "model": "llama-3.3-70b-versatile",
+        "model": model,
         "messages": messages,
         "max_tokens": 120,
         "temperature": 0.9
@@ -143,12 +212,13 @@ Stimmung:
 
         if r.status_code == 200:
             return r.json()["choices"][0]["message"]["content"]
+
         else:
             return f"❌ KI Fehler ({r.status_code})"
 
     except Exception as e:
         print("ERROR:", e)
-        return "❌ Verbindung Fehler"
+        return "❌ verbindungsfehler"
 
 
 # =========================
@@ -156,6 +226,7 @@ Stimmung:
 # =========================
 @client.event
 async def on_ready():
+
     print(f"Abu Olaf ist online als {client.user}")
 
     if not DISCORD_TOKEN:
@@ -163,6 +234,10 @@ async def on_ready():
 
     if not GROQ_KEY:
         print("❌ GROQ_KEY fehlt!")
+
+    if GROQ_KEY:
+        print("🔍 Prüfe verfügbare Groq Modelle...")
+        get_groq_model()
 
 
 @client.event
@@ -222,7 +297,6 @@ async def on_message(message):
         if len(memory) > 20:
             memory[:] = memory[-20:]
 
-        # Discord hat ein Nachrichtenlimit
         await message.channel.send(reply[:1900])
 
 
