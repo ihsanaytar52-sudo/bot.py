@@ -23,7 +23,7 @@ client = discord.Client(intents=intents)
 # GROQ
 # =========================
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = "openai/gpt-oss-20b"
 
 # =========================
 # MEMORY
@@ -129,16 +129,30 @@ regeln:
             return answer.strip()
 
         # =========================
-        # FEHLER
+        # RATE LIMIT
+        # =========================
+        if response.status_code == 429:
+
+            print("❌ GROQ RATE LIMIT:", response.text)
+
+            return "⏳ kurz warten bruder, groq hat gerade zu viele anfragen"
+
+        # =========================
+        # ANDERE FEHLER
         # =========================
 
         try:
             error_data = response.json()
-            error_message = error_data.get("error", {}).get(
+
+            error_message = error_data.get(
+                "error",
+                {}
+            ).get(
                 "message",
                 response.text
             )
-        except:
+
+        except Exception:
             error_message = response.text
 
         print("❌ GROQ FEHLER:", error_message)
@@ -184,7 +198,7 @@ async def on_ready():
 @client.event
 async def on_message(message):
 
-    # Bot ignorieren
+    # Bot ignoriert sich selbst
     if message.author == client.user:
         return
 
@@ -192,18 +206,16 @@ async def on_message(message):
     if message.channel.id != ALLOWED_CHANNEL_ID:
         return
 
-    user_message = message.content.strip()
-
-    if not user_message:
+    # Leere Nachricht ignorieren
+    if not message.content.strip():
         return
 
     user_name = message.author.display_name
+    user_message = message.content.strip()
 
     print(f"📩 {user_name}: {user_message}")
 
-    # =========================
-    # KI
-    # =========================
+    # KI arbeitet
     async with message.channel.typing():
 
         answer = await asyncio.to_thread(
@@ -212,9 +224,7 @@ async def on_message(message):
             user_message
         )
 
-    # =========================
-    # DISCORD ANTWORT
-    # =========================
+    # Antwort senden
     try:
 
         await message.channel.send(
