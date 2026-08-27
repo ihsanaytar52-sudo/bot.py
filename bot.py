@@ -22,6 +22,9 @@ memory = []
 friendship = {}
 mood = 0
 
+# Aktuelles Groq-Modell
+GROQ_MODEL = None
+
 
 # =========================
 # PROVOCATION CHECK
@@ -55,6 +58,7 @@ def get_mood():
 # GROQ MODEL PRÜFEN
 # =========================
 def get_groq_model():
+
     url = "https://api.groq.com/openai/v1/models"
 
     headers = {
@@ -76,43 +80,55 @@ def get_groq_model():
 
         models = r.json().get("data", [])
 
+        available_ids = []
+
         print("===================================")
         print("VERFÜGBARE GROQ MODELLE:")
         print("===================================")
 
         for model in models:
             model_id = model.get("id")
-            print(model_id)
+
+            if model_id:
+                available_ids.append(model_id)
+                print(model_id)
 
         print("===================================")
 
         # Bevorzugte Modelle
         preferred_models = [
             "llama-3.3-70b-versatile",
-            "llama-3.1-8b-instant",
             "openai/gpt-oss-20b",
-            "openai/gpt-oss-120b"
+            "openai/gpt-oss-120b",
+            "llama-3.1-8b-instant"
         ]
 
-        available_ids = [
-            model.get("id")
-            for model in models
-        ]
-
+        # Erst bevorzugte Modelle durchsuchen
         for model in preferred_models:
+
             if model in available_ids:
-                print("✅ BENUTZTES MODELL:", model)
+
+                print("✅ AUSGEWÄHLTES GROQ MODELL:", model)
+
                 return model
 
+        # Falls kein bevorzugtes Modell vorhanden ist
         if available_ids:
-            print("✅ AUTOMATISCHES MODELL:", available_ids[0])
-            return available_ids[0]
+
+            model = available_ids[0]
+
+            print("✅ AUTOMATISCH AUSGEWÄHLTES MODELL:", model)
+
+            return model
 
         print("❌ KEIN GROQ MODELL GEFUNDEN")
+
         return None
 
     except Exception as e:
+
         print("❌ MODEL CHECK FEHLER:", e)
+
         return None
 
 
@@ -122,6 +138,7 @@ def get_groq_model():
 def ask_ai(prompt, user, provoke):
 
     global mood
+    global GROQ_MODEL
 
     if user not in friendship:
         friendship[user] = 0
@@ -138,8 +155,10 @@ def ask_ai(prompt, user, provoke):
 
     if friendship[user] > 15:
         friend_text = f"{user} ist ein Stammuser 😏"
+
     elif friendship[user] > 5:
         friend_text = f"Du kennst {user} gut"
+
     else:
         friend_text = f"Neuer User: {user}"
 
@@ -179,6 +198,7 @@ Stimmung:
         }
     ]
 
+    # Letzte Nachrichten merken
     for m in memory[-10:]:
         messages.append(m)
 
@@ -187,37 +207,101 @@ Stimmung:
         "content": f"{user}: {prompt}"
     })
 
-    model = get_groq_model()
+    # =========================
+    # MODELL HOLEN
+    # =========================
+    if not GROQ_MODEL:
 
-    if not model:
-        return "❌ ich konnte kein verfügbares groq modell finden"
+        GROQ_MODEL = get_groq_model()
+
+        if not GROQ_MODEL:
+            return "❌ kein groq modell verfügbar"
 
     data = {
-        "model": model,
+        "model": GROQ_MODEL,
         "messages": messages,
         "max_tokens": 120,
         "temperature": 0.9
     }
 
     try:
+
+        print("🤖 BENUTZE MODELL:", GROQ_MODEL)
+        print("📨 Sende Anfrage an Groq...")
+
         r = requests.post(
             url,
             headers=headers,
             json=data,
-            timeout=20
+            timeout=30
         )
 
         print("STATUS:", r.status_code)
         print("ANTWORT VON GROQ:", r.text)
 
+        # =========================
+        # ERFOLG
+        # =========================
         if r.status_code == 200:
-            return r.json()["choices"][0]["message"]["content"]
 
+            result = r.json()
+
+            reply = result["choices"][0]["message"]["content"]
+
+            print("✅ GROQ ANTWORT ERHALTEN")
+
+            return reply.strip()
+
+        # =========================
+        # MODELL NICHT VERFÜGBAR
+        # =========================
+        elif r.status_code == 404:
+
+            print("❌ MODELL NICHT VERFÜGBAR:", GROQ_MODEL)
+
+            # Neues Modell suchen
+            new_model = get_groq_model()
+
+            if new_model and new_model != GROQ_MODEL:
+
+                print("🔄 WECHSEL VON:", GROQ_MODEL)
+                print("➡️ NEUES MODELL:", new_model)
+
+                GROQ_MODEL = new_model
+
+                data["model"] = GROQ_MODEL
+
+                r2 = requests.post(
+                    url,
+                    headers=headers,
+                    json=data,
+                    timeout=30
+                )
+
+                print("ZWEITER STATUS:", r2.status_code)
+                print("ZWEITE GROQ ANTWORT:", r2.text)
+
+                if r2.status_code == 200:
+
+                    result = r2.json()
+
+                    return result["choices"][0]["message"]["content"].strip()
+
+            return "❌ kein verfügbares groq modell"
+
+        # =========================
+        # ANDERE FEHLER
+        # =========================
         else:
+
+            print("❌ GROQ FEHLER:", r.text)
+
             return f"❌ KI Fehler ({r.status_code})"
 
     except Exception as e:
-        print("ERROR:", e)
+
+        print("❌ REQUEST ERROR:", e)
+
         return "❌ verbindungsfehler"
 
 
@@ -227,7 +311,11 @@ Stimmung:
 @client.event
 async def on_ready():
 
+    global GROQ_MODEL
+
+    print("===================================")
     print(f"Abu Olaf ist online als {client.user}")
+    print("===================================")
 
     if not DISCORD_TOKEN:
         print("❌ DISCORD_TOKEN fehlt!")
@@ -235,9 +323,25 @@ async def on_ready():
     if not GROQ_KEY:
         print("❌ GROQ_KEY fehlt!")
 
+    # Nur EINMAL beim Start prüfen
     if GROQ_KEY:
-        print("🔍 Prüfe verfügbare Groq Modelle...")
-        get_groq_model()
+
+        print("🔍 Prüfe Groq Modelle...")
+
+        GROQ_MODEL = get_groq_model()
+
+        if GROQ_MODEL:
+
+            print("===================================")
+            print("✅ GROQ IST BEREIT")
+            print("🤖 MODELL:", GROQ_MODEL)
+            print("===================================")
+
+        else:
+
+            print("===================================")
+            print("❌ KEIN GROQ MODELL VERFÜGBAR")
+            print("===================================")
 
 
 @client.event
@@ -258,55 +362,88 @@ async def on_message(message):
     if not content:
         return
 
-    # Namensfragen
+    # =========================
+    # NAMENSFRAGEN
+    # =========================
     if content.lower() in [
         "wer bist du",
         "wie heißt du",
         "dein name",
         "wer bistn du"
     ]:
-        await message.channel.send("ich bin abu olaf lan 😏")
+
+        await message.channel.send(
+            "ich bin abu olaf lan 😏"
+        )
+
         return
 
-    # Begrüßung
-    if content.lower() in ["hi", "hallo", "hey", "selam"]:
+    # =========================
+    # BEGRÜSSUNG
+    # =========================
+    if content.lower() in [
+        "hi",
+        "hallo",
+        "hey",
+        "selam"
+    ]:
+
         await message.channel.send(
             f"👋 selam {user}, ich bin abu olaf lan 😏"
         )
+
         return
 
     provoke = is_provocation(content)
 
     async with message.channel.typing():
 
-        reply = ask_ai(content, user, provoke)
+        reply = ask_ai(
+            content,
+            user,
+            provoke
+        )
 
-        # Nachricht speichern
+        # =========================
+        # USER NACHRICHT SPEICHERN
+        # =========================
         memory.append({
             "role": "user",
             "content": f"{user}: {content}"
         })
 
-        # Antwort speichern
+        # =========================
+        # BOT ANTWORT SPEICHERN
+        # =========================
         memory.append({
             "role": "assistant",
             "content": reply
         })
 
-        # Nur die letzten 20 Einträge behalten
+        # Nur letzte 20 Einträge
         if len(memory) > 20:
+
             memory[:] = memory[-20:]
 
-        await message.channel.send(reply[:1900])
+        # Discord Nachrichtenlimit
+        await message.channel.send(
+            reply[:1900]
+        )
 
 
 # =========================
 # BOT START
 # =========================
 if not DISCORD_TOKEN:
-    print("❌ FEHLER: DISCORD_TOKEN wurde nicht gefunden")
+
+    print(
+        "❌ FEHLER: DISCORD_TOKEN wurde nicht gefunden"
+    )
 
 if not GROQ_KEY:
-    print("❌ FEHLER: GROQ_KEY wurde nicht gefunden")
+
+    print(
+        "❌ FEHLER: GROQ_KEY wurde nicht gefunden"
+    )
 
 client.run(DISCORD_TOKEN)
