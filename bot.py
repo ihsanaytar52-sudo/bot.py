@@ -23,8 +23,10 @@ memory = []
 friendship = {}
 mood = 0
 
-GROQ_MODEL = None
-
+# =========================
+# GROQ
+# =========================
+GROQ_MODEL = "llama-3.3-70b-versatile"
 
 # =========================
 # PROVOCATION CHECK
@@ -55,76 +57,11 @@ def get_mood():
 
 
 # =========================
-# GROQ MODEL
-# =========================
-def get_groq_model():
-
-    url = "https://api.groq.com/openai/v1/models"
-
-    headers = {
-        "Authorization": f"Bearer {GROQ_KEY}"
-    }
-
-    try:
-        r = requests.get(
-            url,
-            headers=headers,
-            timeout=20
-        )
-
-        print("GROQ MODEL STATUS:", r.status_code)
-
-        if r.status_code != 200:
-            print("❌ GROQ MODEL FEHLER:", r.text)
-            return None
-
-        models = r.json().get("data", [])
-
-        available_ids = [
-            model.get("id")
-            for model in models
-            if model.get("id")
-        ]
-
-        print("===================================")
-        print("VERFÜGBARE GROQ MODELLE:")
-        print("===================================")
-
-        for model_id in available_ids:
-            print(model_id)
-
-        print("===================================")
-
-        preferred_models = [
-            "llama-3.3-70b-versatile",
-            "openai/gpt-oss-20b",
-            "openai/gpt-oss-120b",
-            "llama-3.1-8b-instant"
-        ]
-
-        for model in preferred_models:
-            if model in available_ids:
-                print("✅ AUSGEWÄHLTES MODELL:", model)
-                return model
-
-        if available_ids:
-            print("✅ AUTOMATISCHES MODELL:", available_ids[0])
-            return available_ids[0]
-
-        return None
-
-    except Exception as e:
-        print("❌ MODEL CHECK FEHLER:", e)
-        return None
-
-
-# =========================
 # AI FUNCTION
 # =========================
 def ask_ai(prompt, user, provoke):
 
     global mood
-    global GROQ_MODEL
 
     if user not in friendship:
         friendship[user] = 0
@@ -145,6 +82,13 @@ def ask_ai(prompt, user, provoke):
         friend_text = f"Du kennst {user} gut"
     else:
         friend_text = f"Neuer User: {user}"
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {GROQ_KEY}",
+        "Content-Type": "application/json"
+    }
 
     system_text = f"""
 Du bist Abu Olaf.
@@ -175,26 +119,15 @@ Stimmung:
         }
     ]
 
+    # Letzte Nachrichten
     for m in memory[-10:]:
         messages.append(m)
 
+    # Aktuelle Nachricht
     messages.append({
         "role": "user",
         "content": f"{user}: {prompt}"
     })
-
-    if not GROQ_MODEL:
-        GROQ_MODEL = get_groq_model()
-
-    if not GROQ_MODEL:
-        return "❌ kein groq modell verfügbar"
-
-    url = "https://api.groq.com/openai/v1/chat/completions"
-
-    headers = {
-        "Authorization": f"Bearer {GROQ_KEY}",
-        "Content-Type": "application/json"
-    }
 
     data = {
         "model": GROQ_MODEL,
@@ -205,8 +138,12 @@ Stimmung:
 
     try:
 
-        print("🤖 MODELL:", GROQ_MODEL)
-        print("📨 Sende Anfrage...")
+        print("===================================")
+        print("🤖 GROQ ANFRAGE")
+        print("USER:", user)
+        print("NACHRICHT:", prompt)
+        print("MODELL:", GROQ_MODEL)
+        print("===================================")
 
         r = requests.post(
             url,
@@ -216,26 +153,40 @@ Stimmung:
         )
 
         print("STATUS:", r.status_code)
-        print("ANTWORT VON GROQ:", r.text)
+        print("GROQ:", r.text)
 
         if r.status_code == 200:
 
             result = r.json()
 
+            if "choices" not in result:
+                print("❌ Keine choices in Antwort")
+                return "❌ groq hat keine antwort geliefert"
+
             reply = result["choices"][0]["message"]["content"]
 
-            print("✅ ANTWORT ERHALTEN")
+            if not reply:
+                return "❌ groq hat leer geantwortet"
+
+            print("✅ ANTWORT:", reply)
 
             return reply.strip()
 
+        # Rate Limit
+        if r.status_code == 429:
+            return "⏳ kurz warten bruder, groq hat gerade zu viele anfragen"
+
+        # Andere Fehler
         print("❌ GROQ FEHLER:", r.text)
 
         return f"❌ KI Fehler ({r.status_code})"
 
+    except requests.exceptions.Timeout:
+        print("❌ GROQ TIMEOUT")
+        return "❌ groq braucht gerade zu lange"
+
     except Exception as e:
-
-        print("❌ REQUEST ERROR:", e)
-
+        print("❌ ERROR:", repr(e))
         return "❌ verbindungsfehler"
 
 
@@ -245,10 +196,9 @@ Stimmung:
 @client.event
 async def on_ready():
 
-    global GROQ_MODEL
-
     print("===================================")
     print(f"Abu Olaf ist online als {client.user}")
+    print("Groq Modell:", GROQ_MODEL)
     print("===================================")
 
     if not DISCORD_TOKEN:
@@ -257,16 +207,6 @@ async def on_ready():
     if not GROQ_KEY:
         print("❌ GROQ_KEY fehlt!")
 
-    if GROQ_KEY:
-        print("🔍 Prüfe Groq Modell...")
-        GROQ_MODEL = get_groq_model()
-
-        if GROQ_MODEL:
-            print("✅ GROQ BEREIT")
-            print("🤖 MODELL:", GROQ_MODEL)
-        else:
-            print("❌ KEIN MODELL GEFUNDEN")
-
 
 # =========================
 # MESSAGE
@@ -274,9 +214,11 @@ async def on_ready():
 @client.event
 async def on_message(message):
 
+    # Bot ignoriert sich selbst
     if message.author == client.user:
         return
 
+    # Nur erlaubter Channel
     if message.channel.id != ALLOWED_CHANNEL_ID:
         return
 
@@ -317,10 +259,11 @@ async def on_message(message):
 
     provoke = is_provocation(content)
 
+    # =========================
+    # KI ANTWORT
+    # =========================
     async with message.channel.typing():
 
-        # WICHTIG:
-        # Groq blockiert Discord nicht mehr
         reply = await asyncio.to_thread(
             ask_ai,
             content,
@@ -328,22 +271,31 @@ async def on_message(message):
             provoke
         )
 
-        memory.append({
-            "role": "user",
-            "content": f"{user}: {content}"
-        })
+    # =========================
+    # MEMORY
+    # =========================
+    memory.append({
+        "role": "user",
+        "content": f"{user}: {content}"
+    })
 
-        memory.append({
-            "role": "assistant",
-            "content": reply
-        })
+    memory.append({
+        "role": "assistant",
+        "content": reply
+    })
 
-        if len(memory) > 20:
-            memory[:] = memory[-20:]
+    if len(memory) > 20:
+        memory[:] = memory[-20:]
 
-        await message.channel.send(
-            reply[:1900]
-        )
+    # =========================
+    # ANTWORT SENDEN
+    # =========================
+    try:
+        await message.channel.send(reply[:1900])
+        print("✅ DISCORD ANTWORT GESENDET")
+
+    except Exception as e:
+        print("❌ DISCORD SEND FEHLER:", repr(e))
 
 
 # =========================
