@@ -6,74 +6,22 @@ import asyncio
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GROQ_KEY = os.getenv("GROQ_KEY")
 
-# =========================
-# EIN CHANNEL
-# =========================
 ALLOWED_CHANNEL_ID = 1507649049602424976
 
-# =========================
-# DISCORD
-# =========================
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL = "openai/gpt-oss-20b"
+
 intents = discord.Intents.default()
 intents.message_content = True
 
 client = discord.Client(intents=intents)
 
-# =========================
-# GROQ
-# =========================
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "openai/gpt-oss-20b"
-
-# =========================
-# MEMORY
-# =========================
-memory = []
-
 
 # =========================
 # KI
 # =========================
+
 def ask_ai(user_name, user_message):
-
-    messages = [
-        {
-            "role": "system",
-            "content": """
-du bist abu olaf.
-
-du bist ein lockerer, frecher und selbstbewusster discord bot.
-
-regeln:
-- antworte auf deutsch
-- schreibe nur klein
-- antworte natürlich wie ein mensch
-- antworte meistens kurz
-- nutze manchmal "bruder" oder "digga"
-- sei lustig, frech und selbstbewusst
-- du darfst manchmal arrogant wirken
-- du darfst den user spielerisch aufziehen
-- du darfst leichte beleidigungen benutzen, wenn es zur situation passt
-- wenn der user dich beleidigt oder provoziert, darfst du frech zurückbeleidigen
-- du musst nicht immer freundlich sein
-- übertreibe es aber nicht und beleidige nicht jede nachricht
-- keine drohungen
-- keine beleidigungen gegen geschützte gruppen
-- unterhalte dich normal mit den leuten
-- wenn jemand fragt wer du bist, sag dass du abu olaf bist
-- bleibe immer in deiner rolle als abu olaf
-"""
-        }
-    ]
-
-    # Alte Nachrichten
-    messages.extend(memory[-10:])
-
-    # Neue Nachricht
-    messages.append({
-        "role": "user",
-        "content": f"{user_name}: {user_message}"
-    })
 
     headers = {
         "Authorization": f"Bearer {GROQ_KEY}",
@@ -82,18 +30,62 @@ regeln:
 
     data = {
         "model": GROQ_MODEL,
-        "messages": messages,
-        "max_tokens": 200,
-        "temperature": 0.9
+        "messages": [
+            {
+                "role": "system",
+                "content": """
+du bist abu olaf.
+
+du bist ein frecher, arroganter und provokanter discord bot.
+
+regeln:
+- antworte auf deutsch
+- schreibe klein
+- benutze niemals emojis
+- antworte kurz und direkt
+- rede wie ein normaler discord user
+- sei frech und selbstbewusst
+- wenn jemand dich beleidigt, beleidige frech zurück
+- wenn jemand dich provoziert, provoziere zurück
+- du darfst leichte beleidigungen benutzen
+- du darfst den user aufziehen
+- benutze manchmal umgangssprache
+- benutze nicht ständig bruder oder digga
+- keine langen erklärungen
+- keine drohungen
+- keine beleidigungen gegen geschützte gruppen
+
+beispiel:
+
+user: du schwanz
+abu olaf: fresse du kleiner hund
+
+user: halt die fresse
+abu olaf: dann hör auf mir auf die nerven zu gehen
+
+user: du bist dumm
+abu olaf: sagt gerade der größte clown hier
+
+user: wer bist du
+abu olaf: ich bin abu olaf lan
+"""
+            },
+            {
+                "role": "user",
+                "content": f"{user_name}: {user_message}"
+            }
+        ],
+        "max_tokens": 150,
+        "temperature": 1.0
     }
 
     try:
 
-        print("===================================")
-        print("📨 NACHRICHT:", user_message)
-        print("🤖 MODELL:", GROQ_MODEL)
-        print("📡 Sende Anfrage an Groq...")
-        print("===================================")
+        print("================================")
+        print("NACHRICHT:", user_message)
+        print("MODELL:", GROQ_MODEL)
+        print("SENDE AN GROQ")
+        print("================================")
 
         response = requests.post(
             GROQ_URL,
@@ -102,162 +94,110 @@ regeln:
             timeout=30
         )
 
-        print("📊 GROQ STATUS:", response.status_code)
-        print("📩 GROQ ANTWORT:", response.text)
+        print("STATUS:", response.status_code)
+        print("ANTWORT:", response.text)
 
-        # =========================
-        # ERFOLG
-        # =========================
-        if response.status_code == 200:
+        if response.status_code != 200:
 
-            result = response.json()
+            try:
+                error = response.json()
+                error_message = error["error"]["message"]
+            except:
+                error_message = response.text
 
-            answer = result["choices"][0]["message"]["content"]
+            print("GROQ FEHLER:", error_message)
 
-            if not answer:
-                print("❌ Groq hat leer geantwortet")
-                return "bruder ich hab gerade keine antwort 😭"
+            return f"groq fehler: {error_message}"
 
-            # Memory speichern
-            memory.append({
-                "role": "user",
-                "content": f"{user_name}: {user_message}"
-            })
+        result = response.json()
 
-            memory.append({
-                "role": "assistant",
-                "content": answer
-            })
+        answer = result["choices"][0]["message"]["content"]
 
-            # Memory begrenzen
-            if len(memory) > 20:
-                del memory[:-20]
+        if not answer:
+            print("LEERE ANTWORT VON GROQ")
+            return "keine antwort bekommen"
 
-            print("✅ KI ANTWORT:", answer)
+        print("KI:", answer)
 
-            return answer.strip()
-
-        # =========================
-        # RATE LIMIT
-        # =========================
-        if response.status_code == 429:
-
-            print("❌ GROQ RATE LIMIT:", response.text)
-
-            return "⏳ kurz warten bruder, groq hat gerade zu viele anfragen"
-
-        # =========================
-        # ANDERE FEHLER
-        # =========================
-
-        try:
-            error_data = response.json()
-
-            error_message = error_data.get(
-                "error",
-                {}
-            ).get(
-                "message",
-                response.text
-            )
-
-        except Exception:
-            error_message = response.text
-
-        print("❌ GROQ FEHLER:", error_message)
-
-        return f"❌ groq fehler: {error_message}"
+        return answer.strip()
 
     except requests.exceptions.Timeout:
 
-        print("❌ GROQ TIMEOUT")
+        print("GROQ TIMEOUT")
 
-        return "❌ groq antwortet gerade nicht, bruder"
+        return "groq braucht gerade zu lange"
 
     except Exception as e:
 
-        print("❌ FEHLER:", repr(e))
+        print("FEHLER:", repr(e))
 
-        return "❌ fehler bei der ki"
+        return "technischer fehler"
 
 
 # =========================
-# BOT ONLINE
+# ONLINE
 # =========================
+
 @client.event
 async def on_ready():
 
-    print("===================================")
-    print("✅ ABU OLAF IST ONLINE")
-    print(f"🤖 {client.user}")
-    print(f"🧠 MODELL: {GROQ_MODEL}")
-    print(f"📢 CHANNEL: {ALLOWED_CHANNEL_ID}")
-    print("===================================")
-
-    if not DISCORD_TOKEN:
-        print("❌ DISCORD_TOKEN fehlt!")
-
-    if not GROQ_KEY:
-        print("❌ GROQ_KEY fehlt!")
+    print("================================")
+    print("ABU OLAF ONLINE")
+    print("BOT:", client.user)
+    print("MODELL:", GROQ_MODEL)
+    print("CHANNEL:", ALLOWED_CHANNEL_ID)
+    print("================================")
 
 
 # =========================
 # NACHRICHTEN
 # =========================
+
 @client.event
 async def on_message(message):
 
-    # Bot ignoriert sich selbst
     if message.author == client.user:
         return
 
-    # Nur erlaubter Channel
     if message.channel.id != ALLOWED_CHANNEL_ID:
         return
 
-    # Leere Nachricht ignorieren
-    if not message.content.strip():
+    text = message.content.strip()
+
+    if not text:
         return
 
-    user_name = message.author.display_name
-    user_message = message.content.strip()
+    user = message.author.display_name
 
-    print(f"📩 {user_name}: {user_message}")
+    print(f"DISCORD -> {user}: {text}")
 
-    # =========================
-    # KI
-    # =========================
     async with message.channel.typing():
 
         answer = await asyncio.to_thread(
             ask_ai,
-            user_name,
-            user_message
+            user,
+            text
         )
 
-    # =========================
-    # DISCORD ANTWORT
-    # =========================
     try:
 
-        await message.channel.send(
-            answer[:1900]
-        )
+        await message.channel.send(answer[:1900])
 
-        print("✅ DISCORD ANTWORT GESENDET")
+        print("DISCORD -> ANTWORT GESENDET")
 
     except Exception as e:
 
-        print("❌ DISCORD FEHLER:", repr(e))
+        print("DISCORD SEND FEHLER:", repr(e))
 
 
 # =========================
 # START
 # =========================
+
 if not DISCORD_TOKEN:
-    print("❌ DISCORD_TOKEN fehlt!")
+    print("FEHLER: DISCORD_TOKEN fehlt")
 
 if not GROQ_KEY:
-    print("❌ GROQ_KEY fehlt!")
+    print("FEHLER: GROQ_KEY fehlt")
 
 client.run(DISCORD_TOKEN)
